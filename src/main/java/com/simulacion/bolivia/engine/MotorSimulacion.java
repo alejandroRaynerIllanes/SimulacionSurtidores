@@ -10,6 +10,7 @@ import com.simulacion.bolivia.models.EstacionServicio;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.PriorityQueue;
+import com.simulacion.bolivia.reports.RegistroOperacion;
 
 /**
  * Motor principal de Simulación de Eventos Discretos (SED) para la estación de servicio.
@@ -46,6 +47,9 @@ public class MotorSimulacion {
     private SimulacionListener listener;
     private int velocidadDelayMs = 50;
 
+    // Registro de operaciones para reportes
+    private List<RegistroOperacion> historialOperaciones = new ArrayList<>();
+
     // Variables de recopilación de KPIs
     private int vehiculosAtendidosSubv = 0;
     private int vehiculosAtendidosInt = 0;
@@ -63,6 +67,7 @@ public class MotorSimulacion {
         this.calendarioEventos.clear();
         this.esperandoCisterna = false;
         this.contadorVehiculos = 0;
+        this.historialOperaciones.clear();
         
         // Resetear KPIs
         this.vehiculosAtendidosSubv = 0;
@@ -303,14 +308,17 @@ public class MotorSimulacion {
         if (vehiculo != null) {
             // Determinar qué tanque usar
             TanqueCombustible tanqueAUsar = null;
+            String nombreEstacion = "Internacional";
             if ("Internacional".equals(surtidor.getTipo())) {
                 tanqueAUsar = surtidor.getTanqueAsignado();
+                nombreEstacion = nombreInternacional;
             } else {
                 for (EstacionServicio estacion : redEstaciones) {
                     if (estacion.getSurtidores().contains(surtidor)) {
                         tanqueAUsar = "Particular".equals(vehiculo.getPerfil()) 
                                 ? estacion.getTanqueGasolina() 
                                 : estacion.getTanqueDiesel();
+                        nombreEstacion = estacion.getNombre();
                         break;
                     }
                 }
@@ -323,15 +331,33 @@ public class MotorSimulacion {
             double esperaReal = reloj - vehiculo.getHoraArriboSimulacion();
             tiempoEsperaTotal += esperaReal;
 
+            double precioAplicado = 0.0;
             if ("Subvencionado".equalsIgnoreCase(surtidor.getTipo())) {
                 vehiculosAtendidosSubv++;
                 litrosVendidosSubv += vehiculo.getVolumenRequerido();
-                double precioAplicadoSubv = "Particular".equalsIgnoreCase(vehiculo.getPerfil()) ? precioGasolinaSubv : precioDieselSubv;
-                ingresosAcumuladosSubv += vehiculo.getVolumenRequerido() * precioAplicadoSubv;
+                precioAplicado = "Particular".equalsIgnoreCase(vehiculo.getPerfil()) ? precioGasolinaSubv : precioDieselSubv;
+                ingresosAcumuladosSubv += vehiculo.getVolumenRequerido() * precioAplicado;
             } else if ("Internacional".equalsIgnoreCase(surtidor.getTipo())) {
                 vehiculosAtendidosInt++;
                 litrosVendidosInt += vehiculo.getVolumenRequerido();
+                precioAplicado = precioInternacional;
             }
+
+            // Crear el registro de la operación
+            String tipoVehiculo = vehiculo.isEsExtranjero() ? "Extranjero" 
+                    : ("Transporte Pesado".equalsIgnoreCase(vehiculo.getPerfil()) ? "Pesado" : vehiculo.getPerfil());
+            double montoPagadoBs = vehiculo.getVolumenRequerido() * precioAplicado;
+
+            RegistroOperacion reg = new RegistroOperacion(
+                reloj,
+                tipoVehiculo,
+                nombreEstacion,
+                surtidor.getId(),
+                esperaReal,
+                vehiculo.getVolumenRequerido(),
+                montoPagadoBs
+            );
+            historialOperaciones.add(reg);
             
             System.out.println("[RELOJ: " + String.format("%.2f", reloj) + "] Fin servicio " + vehiculo.getId() 
                     + " en " + surtidor.getId() + ". Consumo: " + String.format("%.2f", vehiculo.getVolumenRequerido()) + " L. "
@@ -409,6 +435,9 @@ public class MotorSimulacion {
         System.out.printf("Ingresos brutos totales:        %.2f Bs.\n", ingresosTotales);
         System.out.println("Veces que se desabasteció:      " + vecesDesabastecido);
         System.out.println("========================================================\n");
+
+        // Generar reporte Excel automáticamente al finalizar la simulación
+        com.simulacion.bolivia.reports.GeneradorExcel.generarReporte(this, "reporte_simulacion.xlsx");
     }
 
     // Getters auxiliares para propósitos de verificación e inspección
@@ -417,17 +446,17 @@ public class MotorSimulacion {
     }
 
     public TanqueCombustible getTanqueGasolina() {
-        if (!redEstaciones.isEmpty()) {
+        if (!redEstaciones.isEmpty() && redEstaciones.get(0).getTanqueGasolina() != null) {
             return redEstaciones.get(0).getTanqueGasolina();
         }
-        return null;
+        return getEstacionInternacional().getTanqueGasolina();
     }
 
     public TanqueCombustible getTanqueDiesel() {
-        if (!redEstaciones.isEmpty()) {
+        if (!redEstaciones.isEmpty() && redEstaciones.get(0).getTanqueDiesel() != null) {
             return redEstaciones.get(0).getTanqueDiesel();
         }
-        return null;
+        return getEstacionInternacional().getTanqueDiesel();
     }
 
     public List<Surtidor> getSurtidoresSubvencionados() {
@@ -445,7 +474,8 @@ public class MotorSimulacion {
     public EstacionServicio getEstacionInternacional() {
         if (estacionInternacional == null) {
             TanqueCombustible tanqueInt = new TanqueCombustible("Gasolina Internacional", capacidadInternacional, capacidadInternacional);
-            estacionInternacional = new EstacionServicio(nombreInternacional, 0.0, 24.0, true, false, tanqueInt, null);
+            TanqueCombustible tanqueIntDiesel = new TanqueCombustible("Diésel Internacional", capacidadInternacional, capacidadInternacional);
+            estacionInternacional = new EstacionServicio(nombreInternacional, 0.0, 24.0, true, false, tanqueInt, tanqueIntDiesel);
             Surtidor s = new Surtidor(idSurtidorInternacional, "Internacional", precioInternacional, tanqueInt);
             s.setCaudalLitrosPorMinuto(caudalSurtidorInternacional);
             estacionInternacional.getSurtidores().add(s);
@@ -601,5 +631,9 @@ public class MotorSimulacion {
 
     public void setCaudalSurtidorInternacional(double caudalSurtidorInternacional) {
         this.caudalSurtidorInternacional = caudalSurtidorInternacional;
+    }
+
+    public List<RegistroOperacion> getHistorialOperaciones() {
+        return historialOperaciones;
     }
 }

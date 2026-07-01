@@ -342,6 +342,7 @@ public class DialogGestorRed extends JDialog {
                     listaEstaciones.repaint();
 
                     JOptionPane.showMessageDialog(this, "Cambios guardados con éxito.", "Guardado", JOptionPane.INFORMATION_MESSAGE);
+                    dispose();
                 } catch (NumberFormatException ex) {
                     JOptionPane.showMessageDialog(this, "Introduce valores numéricos válidos en distancias, horas, capacidades y bombas.", "Error de Formato", JOptionPane.ERROR_MESSAGE);
                 } catch (Exception ex) {

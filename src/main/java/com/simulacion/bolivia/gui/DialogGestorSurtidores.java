@@ -202,6 +202,7 @@ public class DialogGestorSurtidores extends JDialog {
                     listaSurtidores.repaint();
 
                     JOptionPane.showMessageDialog(this, "Surtidor guardado correctamente.", "Guardado", JOptionPane.INFORMATION_MESSAGE);
+                    dispose();
                 } catch (NumberFormatException ex) {
                     JOptionPane.showMessageDialog(this, "Por favor, introduce valores válidos para precio y caudal.", "Formato Inválido", JOptionPane.ERROR_MESSAGE);
                 }

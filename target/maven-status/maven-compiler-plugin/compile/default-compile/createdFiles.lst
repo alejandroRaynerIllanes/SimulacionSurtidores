@@ -6,11 +6,13 @@ com\simulacion\bolivia\gui\PanelMapaRed.class
 com\simulacion\bolivia\gui\VentanaPrincipal$1.class
 com\simulacion\bolivia\gui\DialogGestorRed.class
 com\simulacion\bolivia\gui\DialogGestorSurtidores$3.class
+com\simulacion\bolivia\reports\RegistroOperacion.class
 com\simulacion\bolivia\models\Vehiculo.class
 com\simulacion\bolivia\gui\DialogGestorEstaciones.class
 com\simulacion\bolivia\engine\TipoEvento.class
 com\simulacion\bolivia\models\Surtidor.class
 com\simulacion\bolivia\gui\DialogConfiguracionInternacional$1.class
+com\simulacion\bolivia\reports\GeneradorExcel.class
 com\simulacion\bolivia\gui\DialogGestorRed$3.class
 com\simulacion\bolivia\app\Main.class
 com\simulacion\bolivia\gui\DialogConfiguracionInternacional.class
