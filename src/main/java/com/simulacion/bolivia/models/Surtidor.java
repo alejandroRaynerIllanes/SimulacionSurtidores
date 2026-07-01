@@ -117,13 +117,6 @@ public class Surtidor {
 
     @Override
     public String toString() {
-        return "Surtidor{" +
-                "id='" + id + '\'' +
-                ", tipo='" + tipo + '\'' +
-                ", precioPorLitro=" + precioPorLitro +
-                ", estaOcupado=" + estaOcupado +
-                ", tanqueAsignado=" + (tanqueAsignado != null ? tanqueAsignado.getTipoCombustible() : "Ninguno") +
-                ", caudalLitrosPorMinuto=" + caudalLitrosPorMinuto +
-                '}';
+        return id + " (" + tipo + ") - " + (int)caudalLitrosPorMinuto + " L/min - Precio: " + precioPorLitro + " Bs";
     }
 }

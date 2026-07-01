@@ -12,7 +12,7 @@ public class Main {
         MotorSimulacion motor = new MotorSimulacion();
         
         // Inicializar el sistema (tanques, surtidores y primeros arribos)
-        motor.inicializarSistema();
+        motor.inicializarSistema(null);
         
         // Ejecutar simulación para 90 días (129,600 minutos)
         // 90 días * 24 horas/día * 60 minutos/hora = 129600 minutos

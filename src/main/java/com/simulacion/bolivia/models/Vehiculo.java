@@ -9,6 +9,7 @@ public class Vehiculo {
     private double volumenRequerido; // En litros
     private double costoOportunidadHora; // 30.0 para Particular, 150.0 para Pesado
     private double horaArriboSimulacion; // Minuto exacto en el que llega al sistema
+    private boolean esExtranjero; // true si es vehículo con patente extranjera (paga precio internacional)
 
     /**
      * Constructor vacío por defecto.
@@ -25,12 +26,13 @@ public class Vehiculo {
      * @param costoOportunidadHora costo de oportunidad por hora de espera.
      * @param horaArriboSimulacion minuto de arribo en la simulación.
      */
-    public Vehiculo(String id, String perfil, double volumenRequerido, double costoOportunidadHora, double horaArriboSimulacion) {
+    public Vehiculo(String id, String perfil, double volumenRequerido, double costoOportunidadHora, double horaArriboSimulacion, boolean esExtranjero) {
         this.id = id;
         this.perfil = perfil;
         this.volumenRequerido = volumenRequerido;
         this.costoOportunidadHora = costoOportunidadHora;
         this.horaArriboSimulacion = horaArriboSimulacion;
+        this.esExtranjero = esExtranjero;
     }
 
     /**
@@ -40,12 +42,14 @@ public class Vehiculo {
      * @param perfil tipo de perfil ("Particular" o "Transporte Pesado").
      * @param volumenRequerido cantidad de combustible requerida en litros.
      * @param horaArriboSimulacion minuto de arribo en la simulación.
+     * @param esExtranjero true si es extranjero.
      */
-    public Vehiculo(String id, String perfil, double volumenRequerido, double horaArriboSimulacion) {
+    public Vehiculo(String id, String perfil, double volumenRequerido, double horaArriboSimulacion, boolean esExtranjero) {
         this.id = id;
         this.perfil = perfil;
         this.volumenRequerido = volumenRequerido;
         this.horaArriboSimulacion = horaArriboSimulacion;
+        this.esExtranjero = esExtranjero;
         this.costoOportunidadHora = calcularCostoOportunidadPorDefecto(perfil);
     }
 
@@ -104,6 +108,14 @@ public class Vehiculo {
         this.horaArriboSimulacion = horaArriboSimulacion;
     }
 
+    public boolean isEsExtranjero() {
+        return esExtranjero;
+    }
+
+    public void setEsExtranjero(boolean esExtranjero) {
+        this.esExtranjero = esExtranjero;
+    }
+
     @Override
     public String toString() {
         return "Vehiculo{" +
@@ -112,6 +124,7 @@ public class Vehiculo {
                 ", volumenRequerido=" + volumenRequerido +
                 ", costoOportunidadHora=" + costoOportunidadHora +
                 ", horaArriboSimulacion=" + horaArriboSimulacion +
+                ", esExtranjero=" + esExtranjero +
                 '}';
     }
 }

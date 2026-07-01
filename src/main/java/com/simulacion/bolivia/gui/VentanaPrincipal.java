@@ -18,9 +18,8 @@ public class VentanaPrincipal extends JFrame implements SimulacionListener {
     private JLabel lblTanque;
     private JLabel lblAlarmaCisterna;
 
-    // Componentes de Surtidores (Centro)
-    private JPanel panelSurtidores;
-    private final List<PanelSurtidor> panelesSurtidores = new ArrayList<>();
+    // Componente de Mapa de Red (Centro)
+    private PanelMapaRed mapaRed;
 
     // Componentes de Controles y KPIs (Sur)
     private JLabel lblVehiculosSub;
@@ -30,13 +29,26 @@ public class VentanaPrincipal extends JFrame implements SimulacionListener {
     private JButton btnIniciar;
     private JSlider sliderVelocidad;
 
+    // Componentes del Panel What-If (Oeste)
+    private JTextField txtPrecioGas;
+    private JTextField txtPrecioDiesel;
+    private JTextField txtPrecioInt;
+    private JTextField txtCuotaGas;
+    private JTextField txtCuotaDiesel;
+    private JTextField txtDiasSim;
+    private JButton btnConfigurarRed;
+    private JLabel lblConteoEstaciones;
+
+    private final List<com.simulacion.bolivia.models.EstacionServicio> estacionesUsuario = new java.util.ArrayList<>();
     private boolean simIniciada = false;
 
     public VentanaPrincipal() {
         // 1. Instanciar el motor
         this.motor = new MotorSimulacion();
         this.motor.setListener(this);
-        this.motor.inicializarSistema();
+
+        // Inicializar vacío (solo mostrar Estación Internacional por defecto)
+        this.motor.inicializarSistema(estacionesUsuario);
 
         // 2. Configurar el frame
         setTitle("Simulación Estación de Servicio - Bolivia (Trimestre 3)");
@@ -47,6 +59,7 @@ public class VentanaPrincipal extends JFrame implements SimulacionListener {
 
         // 3. Crear secciones
         crearPanelNorte();
+        crearPanelConfiguracion(); // Añade el panel What-If a la izquierda (WEST)
         crearPanelCentro();
         crearPanelSur();
 
@@ -55,21 +68,21 @@ public class VentanaPrincipal extends JFrame implements SimulacionListener {
     }
 
     private void crearPanelNorte() {
-        JPanel panelNorte = new JPanel(new GridLayout(1, 3, 10, 10));
+        JPanel panelNorte = new JPanel(new GridLayout(1, 4, 10, 10));
         panelNorte.setBackground(new Color(40, 44, 52));
         panelNorte.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
 
         lblReloj = new JLabel("Reloj: 0.00 min");
         lblReloj.setForeground(Color.WHITE);
-        lblReloj.setFont(new Font("SansSerif", Font.BOLD, 14));
+        lblReloj.setFont(new Font("SansSerif", Font.BOLD, 12));
 
-        lblTanque = new JLabel("Tanque Principal: 30000.00 L");
+        lblTanque = new JLabel("Gasolina: 30000 L | Diésel: 30000 L");
         lblTanque.setForeground(Color.WHITE);
-        lblTanque.setFont(new Font("SansSerif", Font.BOLD, 14));
+        lblTanque.setFont(new Font("SansSerif", Font.BOLD, 12));
 
         lblAlarmaCisterna = new JLabel("ESTADO T. SUBVENCIONADO: OK");
         lblAlarmaCisterna.setForeground(new Color(40, 167, 69)); // Verde
-        lblAlarmaCisterna.setFont(new Font("SansSerif", Font.BOLD, 14));
+        lblAlarmaCisterna.setFont(new Font("SansSerif", Font.BOLD, 12));
 
         panelNorte.add(lblReloj);
         panelNorte.add(lblTanque);
@@ -78,22 +91,73 @@ public class VentanaPrincipal extends JFrame implements SimulacionListener {
         add(panelNorte, BorderLayout.NORTH);
     }
 
-    private void crearPanelCentro() {
-        panelSurtidores = new JPanel(new GridLayout(1, 5));
+    private void crearPanelConfiguracion() {
+        JPanel panelConfig = new JPanel(new GridLayout(7, 2, 10, 20));
+        panelConfig.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createTitledBorder(BorderFactory.createEtchedBorder(), "Panel What-If"),
+                BorderFactory.createEmptyBorder(10, 10, 10, 10)
+        ));
+        panelConfig.setBackground(Color.WHITE);
+
+        // Instanciar campos de texto
+        txtPrecioGas = new JTextField("6.96");
+        txtPrecioDiesel = new JTextField("9.80");
+        txtPrecioInt = new JTextField("12.50");
+        txtCuotaGas = new JTextField("100");
+        txtCuotaDiesel = new JTextField("60");
+        txtDiasSim = new JTextField("90");
+
+        btnConfigurarRed = new JButton("⚙️ Configurar Red de Estaciones...");
+        lblConteoEstaciones = new JLabel("Estaciones en red: 0");
+
+        btnConfigurarRed.addActionListener(e -> {
+            DialogGestorRed dialog = new DialogGestorRed(this, true, estacionesUsuario, motor);
+            dialog.setVisible(true);
+            // Sincronizar el motor con la red modificada inmediatamente
+            motor.inicializarSistema(estacionesUsuario);
+            lblConteoEstaciones.setText("Estaciones en red: " + estacionesUsuario.size());
+            mapaRed.repaint(); // Actualizar el mapa inmediatamente
+        });
+
+        // Añadir componentes al panel
+        panelConfig.add(new JLabel("Precio Gasolina:"));
+        panelConfig.add(txtPrecioGas);
         
-        // Agregar surtidores subvencionados (4)
-        for (Surtidor s : motor.getSurtidoresSubvencionados()) {
-            PanelSurtidor ps = new PanelSurtidor(s);
-            panelesSurtidores.add(ps);
-            panelSurtidores.add(ps);
-        }
+        panelConfig.add(new JLabel("Precio Diésel:"));
+        panelConfig.add(txtPrecioDiesel);
+        
+        panelConfig.add(new JLabel("Precio Int.:"));
+        panelConfig.add(txtPrecioInt);
 
-        // Agregar surtidor internacional (1)
-        PanelSurtidor psInt = new PanelSurtidor(motor.getSurtidorInternacional());
-        panelesSurtidores.add(psInt);
-        panelSurtidores.add(psInt);
+        panelConfig.add(new JLabel("Cuota Gasolina (%):"));
+        panelConfig.add(txtCuotaGas);
 
-        add(panelSurtidores, BorderLayout.CENTER);
+        panelConfig.add(new JLabel("Cuota Diésel (%):"));
+        panelConfig.add(txtCuotaDiesel);
+
+        panelConfig.add(new JLabel("Días a Simular:"));
+        panelConfig.add(txtDiasSim);
+
+        panelConfig.add(lblConteoEstaciones);
+        panelConfig.add(btnConfigurarRed);
+
+        // Envolver para evitar estiramiento vertical
+        JPanel panelWhatIfWrapper = new JPanel(new BorderLayout());
+        panelWhatIfWrapper.setBackground(Color.WHITE);
+        panelWhatIfWrapper.setBorder(new javax.swing.border.EmptyBorder(10, 10, 10, 10));
+        panelWhatIfWrapper.setPreferredSize(new Dimension(280, 0));
+        panelWhatIfWrapper.add(panelConfig, BorderLayout.NORTH);
+
+        add(panelWhatIfWrapper, BorderLayout.WEST);
+    }
+
+    private void crearPanelCentro() {
+        mapaRed = new PanelMapaRed(motor);
+        JScrollPane scroll = new JScrollPane(mapaRed);
+        scroll.setBorder(BorderFactory.createEmptyBorder());
+        scroll.setBackground(new Color(240, 245, 250));
+        scroll.getViewport().setBackground(new Color(240, 245, 250));
+        add(scroll, BorderLayout.CENTER);
     }
 
     private void crearPanelSur() {
@@ -139,10 +203,26 @@ public class VentanaPrincipal extends JFrame implements SimulacionListener {
             motor.setVelocidadDelayMs(delay);
         });
 
-        btnIniciar = new JButton("Iniciar Simulación");
+        btnIniciar = new JButton("Iniciar Simulación") {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                if (isEnabled()) {
+                    g2.setColor(getBackground());
+                } else {
+                    g2.setColor(Color.LIGHT_GRAY);
+                }
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8);
+                g2.dispose();
+                super.paintComponent(g);
+            }
+        };
         btnIniciar.setFont(new Font("SansSerif", Font.BOLD, 13));
         btnIniciar.setBackground(new Color(0, 123, 255));
         btnIniciar.setForeground(Color.WHITE);
+        btnIniciar.setContentAreaFilled(false);
+        btnIniciar.setBorderPainted(false);
         btnIniciar.setFocusPainted(false);
         
         btnIniciar.addActionListener(e -> {
@@ -150,11 +230,58 @@ public class VentanaPrincipal extends JFrame implements SimulacionListener {
                 simIniciada = true;
                 btnIniciar.setEnabled(false);
                 btnIniciar.setText("Simulación en curso...");
-                
+
+                // Deshabilitar los campos del panel What-If
+                txtPrecioGas.setEnabled(false);
+                txtPrecioDiesel.setEnabled(false);
+                txtPrecioInt.setEnabled(false);
+                txtCuotaGas.setEnabled(false);
+                txtCuotaDiesel.setEnabled(false);
+                txtDiasSim.setEnabled(false);
+                btnConfigurarRed.setEnabled(false);
+
+                double tiempoLimiteMinutos = 129600.0; // default
+
+                // Configurar parámetros leídos del panel de configuración What-If
+                try {
+                    motor.setPrecioGasolinaSubv(Double.parseDouble(txtPrecioGas.getText().trim()));
+                    motor.setPrecioDieselSubv(Double.parseDouble(txtPrecioDiesel.getText().trim()));
+                    motor.setPrecioInternacional(Double.parseDouble(txtPrecioInt.getText().trim()));
+                    motor.setPorcentajeEntregaYpfbGas(Double.parseDouble(txtCuotaGas.getText().trim()));
+                    motor.setPorcentajeEntregaYpfbDiesel(Double.parseDouble(txtCuotaDiesel.getText().trim()));
+                    
+                    double dias = Double.parseDouble(txtDiasSim.getText().trim());
+                    tiempoLimiteMinutos = dias * 1440.0;
+                } catch (NumberFormatException ex) {
+                    JOptionPane.showMessageDialog(this, 
+                            "Por favor introduce valores numéricos válidos en el panel What-If.", 
+                            "Error de Formato", JOptionPane.ERROR_MESSAGE);
+                    // Re-habilitar para corregir error
+                    simIniciada = false;
+                    btnIniciar.setEnabled(true);
+                    btnIniciar.setText("Iniciar Simulación");
+                    txtPrecioGas.setEnabled(true);
+                    txtPrecioDiesel.setEnabled(true);
+                    txtPrecioInt.setEnabled(true);
+                    txtCuotaGas.setEnabled(true);
+                    txtCuotaDiesel.setEnabled(true);
+                    txtDiasSim.setEnabled(true);
+                    btnConfigurarRed.setEnabled(true);
+                    return;
+                }
+
+                // Reinicializar el sistema con los nuevos parámetros antes de correr
+                motor.inicializarSistema(estacionesUsuario);
+
+                // Reconstruir los paneles de surtidores para usar las nuevas referencias
+                SwingUtilities.invokeLater(() -> {
+                    mapaRed.repaint();
+                });
+
                 // Ejecutar la simulación en un hilo secundario para no bloquear el EDT (Event Dispatch Thread)
+                final double limite = tiempoLimiteMinutos;
                 new Thread(() -> {
-                    // Simular un trimestre completo: 129,600 minutos
-                    motor.ejecutarSimulacion(129600.0);
+                    motor.ejecutarSimulacion(limite);
                     
                     // Al finalizar, habilitar el botón y mostrar el reporte en consola
                     SwingUtilities.invokeLater(() -> {
@@ -186,10 +313,10 @@ public class VentanaPrincipal extends JFrame implements SimulacionListener {
             
             lblReloj.setText(String.format("Reloj: Día %d (%02d:%02d) - [%.1f min]", dias + 1, horas, mins, relojActual));
 
-            // Actualizar Tanque Principal
-            double nivelTanque = motor.getTanquePrincipal().getNivelActual();
-            double capMax = motor.getTanquePrincipal().getCapacidadMaxima();
-            lblTanque.setText(String.format("Tanque Principal: %.2f / %.0f L", nivelTanque, capMax));
+            // Actualizar Tanques
+            double nivelGas = motor.getTanqueGasolina().getNivelActual();
+            double nivelDie = motor.getTanqueDiesel().getNivelActual();
+            lblTanque.setText(String.format("Gasolina: %.1f L | Diésel: %.1f L", nivelGas, nivelDie));
 
             // Actualizar Alerta de Cisterna
             if (motor.isEsperandoCisterna()) {
@@ -208,16 +335,16 @@ public class VentanaPrincipal extends JFrame implements SimulacionListener {
             lblVehiculosSub.setText("Vehículos Subvencionados: " + atendidosSubv);
             lblVehiculosInt.setText("Vehículos Internacionales: " + atendidosInt);
 
-            double ingresosSub = motor.getLitrosVendidosSubv() * motor.getPrecioSubvActual();
-            double ingresosInt = motor.getLitrosVendidosInt() * motor.getPrecioIntActual();
+            double ingresosSub = motor.getIngresosAcumuladosSubv();
+            double ingresosInt = motor.getLitrosVendidosInt() * motor.getPrecioInternacional();
             double ingresosTotales = ingresosSub + ingresosInt;
             lblIngresos.setText(String.format("Ingresos totales: %.2f Bs.", ingresosTotales));
 
             double esperaMedia = totalAtendidos > 0 ? (motor.getTiempoEsperaTotal() / totalAtendidos) : 0.0;
             lblEsperaMedia.setText(String.format("Tiempo medio de espera: %.2f min", esperaMedia));
 
-            // Repintar los componentes de surtidores
-            panelSurtidores.repaint();
+            // Repintar el lienzo del mapa de red
+            mapaRed.repaint();
         });
     }
 }

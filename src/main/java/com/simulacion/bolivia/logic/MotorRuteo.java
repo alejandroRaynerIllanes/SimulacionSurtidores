@@ -37,32 +37,75 @@ public class MotorRuteo {
      * @param precioSubvencionadoAct precio subvencionado actual por litro.
      * @return el surtidor óptimo seleccionado.
      */
-    public static Surtidor elegirMejorSurtidor(Vehiculo vehiculo, List<Surtidor> surtidoresSubvencionados, Surtidor surtidorInternacional, double precioSubvencionadoAct) {
-        if (surtidoresSubvencionados == null || surtidoresSubvencionados.isEmpty()) {
+    public static Surtidor elegirMejorSurtidor(Vehiculo vehiculo, List<com.simulacion.bolivia.models.EstacionServicio> redEstaciones, Surtidor surtidorInternacional, double precioGasolina, double precioDiesel, double precioInt, double reloj) {
+        // Los extranjeros no gozan de subvención y van directo al internacional
+        if (vehiculo.isEsExtranjero()) {
             return surtidorInternacional;
         }
 
-        // 1. Buscar el surtidor con menor fila de espera entre los subvencionados
-        Surtidor mejorSurtidorSub = surtidoresSubvencionados.get(0);
-        for (Surtidor s : surtidoresSubvencionados) {
-            if (s.getTamanoFila() < mejorSurtidorSub.getTamanoFila()) {
-                mejorSurtidorSub = s;
+        if (redEstaciones == null || redEstaciones.isEmpty()) {
+            return null;
+        }
+
+        // 1. Buscar el surtidor subvencionado con menor fila entre todas las estaciones abiertas y válidas
+        Surtidor mejorSurtidorSub = null;
+        for (com.simulacion.bolivia.models.EstacionServicio estacion : redEstaciones) {
+            // Verificar si la estación está abierta a esta hora de la simulación
+            if (!estacion.estaAbierta(reloj)) {
+                continue;
+            }
+            
+            // Verificar si ofrece el combustible requerido para el perfil
+            if ("Particular".equalsIgnoreCase(vehiculo.getPerfil()) && !estacion.isVendeGasolina()) {
+                continue;
+            }
+            if ("Transporte Pesado".equalsIgnoreCase(vehiculo.getPerfil()) && !estacion.isVendeDiesel()) {
+                continue;
+            }
+
+            // Buscar en los surtidores de esta estación
+            for (Surtidor s : estacion.getSurtidores()) {
+                if (mejorSurtidorSub == null || s.getTamanoFila() < mejorSurtidorSub.getTamanoFila()) {
+                    mejorSurtidorSub = s;
+                }
             }
         }
 
-        // 2. Calcular la espera estimada en el mejor surtidor subvencionado
+        // Si ninguna estación válida está abierta o disponible, el vehículo se va sin cargar (retorna null)
+        if (mejorSurtidorSub == null) {
+            return null;
+        }
+
+        // 2. Buscar la estación a la que pertenece mejorSurtidorSub para obtener su distancia
+        com.simulacion.bolivia.models.EstacionServicio estacionAsociada = null;
+        for (com.simulacion.bolivia.models.EstacionServicio es : redEstaciones) {
+            if (es.getSurtidores().contains(mejorSurtidorSub)) {
+                estacionAsociada = es;
+                break;
+            }
+        }
+
+        // Asumiremos velocidad de 30 Km/h. Tiempo de ida y vuelta en minutos:
+        double tiempoViajeMinutos = 0.0;
+        if (estacionAsociada != null) {
+            tiempoViajeMinutos = (estacionAsociada.getDistanciaKm() / 30.0) * 60.0 * 2.0;
+        }
+
+        // 3. Calcular la espera estimada en el mejor surtidor subvencionado encontrado
         double esperaEstimadaSub = calcularTiempoEsperaEstimado(mejorSurtidorSub, vehiculo);
 
-        // 3. Calcular Costo Total Subvencionado (CT_sub)
-        // CT_sub = (volumen * precioSub) + ((esperaMinutos / 60) * costoOportunidadHora)
-        double costoCombustibleSub = vehiculo.getVolumenRequerido() * precioSubvencionadoAct;
-        double costoEsperaSub = (esperaEstimadaSub / 60.0) * vehiculo.getCostoOportunidadHora();
+        // 4. Calcular Costo Total Subvencionado (CT_sub) (tiempo perdido = viaje + cola)
+        double precioAplicado = "Particular".equalsIgnoreCase(vehiculo.getPerfil()) ? precioGasolina : precioDiesel;
+        double costoCombustibleSub = vehiculo.getVolumenRequerido() * precioAplicado;
+        double costoEsperaSub = ((esperaEstimadaSub + tiempoViajeMinutos) / 60.0) * vehiculo.getCostoOportunidadHora();
         double CT_sub = costoCombustibleSub + costoEsperaSub;
 
-        // 4. Calcular Costo Total Internacional (CT_int) -> Se asume espera 0
-        double CT_int = vehiculo.getVolumenRequerido() * surtidorInternacional.getPrecioPorLitro();
+        // 5. Calcular Costo Total Internacional (CT_int) -> Se asume espera en cola 0 (tiempo perdido = viaje)
+        double costoCombustibleInt = vehiculo.getVolumenRequerido() * precioInt;
+        double costoEsperaInt = (tiempoViajeMinutos / 60.0) * vehiculo.getCostoOportunidadHora();
+        double CT_int = costoCombustibleInt + costoEsperaInt;
 
-        // 5. Retornar el surtidor internacional si CT_int <= CT_sub, de lo contrario el subvencionado
+        // 6. Retornar el surtidor internacional si CT_int <= CT_sub, de lo contrario el subvencionado
         if (CT_int <= CT_sub) {
             return surtidorInternacional;
         } else {
